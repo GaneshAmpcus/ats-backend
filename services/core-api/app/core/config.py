@@ -23,6 +23,27 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://localhost:5432/ats_platform",
         repr=False,
     )
+    redis_url: str = Field(default="redis://localhost:6379/0", repr=False)
+    celery_broker_url: str | None = Field(default=None, repr=False)
+    celery_result_backend: str | None = Field(default=None, repr=False)
+    celery_task_always_eager: bool | None = None
+
+    @property
+    def task_broker_url(self) -> str:
+        return self.celery_broker_url or self.redis_url
+
+    @property
+    def task_result_backend(self) -> str:
+        if self.celery_result_backend:
+            return self.celery_result_backend
+        # Keep Celery results in a separate Redis database by default.
+        return self.redis_url.rsplit("/", 1)[0] + "/1"
+
+    @property
+    def run_celery_tasks_eagerly(self) -> bool:
+        if self.celery_task_always_eager is not None:
+            return self.celery_task_always_eager
+        return self.app_env != "production"
 
     @property
     def api_docs_enabled(self) -> bool:
