@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Local editor settings
+.vscode/
+
 # Python
 __pycache__/
 *.py[cod]
