@@ -36,3 +36,7 @@ dist/
 
 # Local logs
 *.log
+
+
+# Uploaded resumes (personal data)
+services/core-api/storage/

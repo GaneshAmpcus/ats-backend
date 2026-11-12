@@ -10,7 +10,7 @@ celery_app = Celery(
     backend=settings.task_result_backend,
 )
 
-celery_app.autodiscover_tasks(["app.modules"])
+celery_app.autodiscover_tasks(["app.modules", "app.modules.resumes"])
 
 celery_app.conf.update(
     accept_content=["json"],

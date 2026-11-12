@@ -1,0 +1,6 @@
+To run teh clery worker 
+python -m celery -A app.workers.celery_app:celery_app worker --loglevel=INFO -Q resume_priority,resume_bulk --pool=solo
+
+to run the bcakend and ai service
+uvicorn app.main:app --reload --port 8001
+python -m uvicorn app.main:app --reload --port 8000
