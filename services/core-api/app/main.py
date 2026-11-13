@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.exception_handlers import register_exception_handlers
 from app.core.logging_config import configure_logging
@@ -37,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
     application.add_middleware(RequestIDMiddleware)
     register_exception_handlers(application)
+    application.include_router(api_router, prefix="/api/v1")
     return application
 
 
