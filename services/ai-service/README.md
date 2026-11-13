@@ -44,3 +44,9 @@ get its response, call `POST /api/v1/llm-test` with a JSON body such as
 Core integration factories are available as `app.matching.embeddings.get_embedding_model`,
 `app.llm.client.get_llm`, and `app.db.database.get_db_session`. Heavy model and
 database connections are not opened during module import.
+
+Resume parsing prompts are centralized in `app/llm/prompts/`, response contracts
+are defined in `app/parsing/schemas.py`, and orchestration lives in
+`app/parsing/service.py`. Endpoint tests replace the model factory with a fake, so
+they can verify the request and response contract without a Groq API key or live
+network call.

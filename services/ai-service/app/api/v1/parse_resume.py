@@ -1,7 +1,10 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
+
+from app.llm.client import get_llm
+from app.parsing.service import ResumeParsingError, parse_resume_text
 
 router = APIRouter(tags=["parsing"])
 
@@ -19,44 +22,19 @@ class ParseResumeRequest(BaseModel):
         return value
 
 
-@router.post("/parse-resume", summary="Parse resume text (static placeholder response)")
+@router.post("/parse-resume", summary="Extract structured candidate data from resume text")
 def parse_resume(request: ParseResumeRequest) -> dict[str, Any]:
-    """Temporary stub: returns fixed JSON so the backend pipeline can be tested end to end.
-
-    Replace the body with the real parsing pipeline; keep the response shape stable.
-    """
-    return {
-        "personal_info": {
-            "full_name": "Jane Doe",
-            "email": "jane.doe@example.com",
-            "phone": "+1-555-0100",
-            "location": "San Francisco, CA",
-            "linkedin_url": "https://www.linkedin.com/in/janedoe",
-        },
-        "summary": "Software engineer with 6 years of experience building backend systems.",
-        "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "AWS"],
-        "total_experience_years": 6.0,
-        "experience": [
-            {
-                "title": "Senior Software Engineer",
-                "company": "Example Corp",
-                "start_date": "2021-03",
-                "end_date": None,
-                "is_current": True,
-                "description": "Led development of internal platform services.",
-            }
-        ],
-        "education": [
-            {
-                "degree": "B.S. Computer Science",
-                "institution": "Example University",
-                "start_year": 2014,
-                "end_year": 2018,
-            }
-        ],
-        "meta": {
-            "is_stub": True,
-            "received_characters": len(request.text),
-            "filename": request.filename,
-        },
-    }
+    """Extract only candidate fields consumed by the Core API resume flow."""
+    try:
+        result = parse_resume_text(request.text, llm=get_llm())
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="The AI service is not configured to process resumes.",
+        ) from exc
+    except ResumeParsingError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI service could not parse this resume. Please retry.",
+        ) from exc
+    return result.model_dump()

@@ -11,6 +11,65 @@ _SPACE_AROUND_NEWLINE = re.compile(r" *\n *")
 _BLANK_LINES = re.compile(r"\n{3,}")
 
 
+def _resolve(obj):
+    getter = getattr(obj, "get_object", None)
+    return getter() if callable(getter) else obj
+
+
+def _pdf_page_links(page) -> list[str]:
+    """Return external URLs from a page's link annotations (e.g. LinkedIn/GitHub)."""
+    links: list[str] = []
+    try:
+        annots = page.get("/Annots")
+        if annots is None:
+            return links
+        for annot in _resolve(annots):
+            action = _resolve(annot).get("/A")
+            if action is None:
+                continue
+            uri = _resolve(action).get("/URI")
+            if uri:
+                links.append(str(_resolve(uri)))
+    except Exception:
+        # Links are a best-effort extra; never fail text extraction because of them.
+        pass
+    return links
+
+
+def _docx_links(document) -> list[str]:
+    try:
+        return [
+            rel.target_ref
+            for rel in document.part.rels.values()
+            if rel.is_external and rel.reltype.endswith("/hyperlink")
+        ]
+    except Exception:
+        return []
+
+
+def _append_links(text: str, links: list[str]) -> str:
+    """Append hyperlink targets that are not already visible in the text.
+
+    Resumes often show "LinkedIn" as the link label while the URL only lives in the
+    link annotation, so it would otherwise never reach the AI service.
+    """
+    if not text.strip():
+        return text
+    lowered = text.lower()
+    seen: set[str] = set()
+    extra: list[str] = []
+    for link in links:
+        link = link.strip()
+        key = link.rstrip("/").lower()
+        if not key.startswith(("http://", "https://")) or key in seen or key in lowered:
+            continue
+        seen.add(key)
+        extra.append(link)
+    if not extra:
+        return text
+    return text + "\n\nLinks:\n" + "\n".join(extra)
+
+
 class ExtractionError(Exception):
     """Raised when text cannot be extracted. The message is safe to show to users."""
 
@@ -37,7 +96,9 @@ def _extract_pdf(data: bytes, max_pages: int) -> str:
             raise ExtractionError("The PDF is password protected.")
         if len(reader.pages) > max_pages:
             raise ExtractionError(f"The PDF has more than {max_pages} pages.")
-        return "\n".join((page.extract_text() or "") for page in reader.pages)
+        text = "\n".join((page.extract_text() or "") for page in reader.pages)
+        links = [link for page in reader.pages for link in _pdf_page_links(page)]
+        return _append_links(text, links)
     except ExtractionError:
         raise
     except Exception as exc:
@@ -59,7 +120,7 @@ def _extract_docx(data: bytes) -> str:
                 cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
                 if cells:
                     parts.append(" | ".join(cells))
-        return "\n".join(parts)
+        return _append_links("\n".join(parts), _docx_links(document))
     except ExtractionError:
         raise
     except Exception as exc:
