@@ -1,6 +1,42 @@
-To run teh clery worker 
+# Run these commands from the folder shown below for each service
+
+# Core API service
+# Folder: D:\ATS\ats-backend\services\core-api
+cd D:\ATS\ats-backend\services\core-api
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+
+# Alembic database migration commands
+# IMPORTANT: Run from the Core API folder below, not from the repo root.
+# Folder: D:\ATS\ats-backend\services\core-api
+cd /d D:\ATS\ats-backend\services\core-api
+set PYTHONPATH=%cd%;%PYTHONPATH%
+
+# If you are using the repo venv:
+D:\ATS\ats-backend\.venv\Scripts\activate
+
+# Or activate the local project venv if you created one inside this folder:
+# .\.venv\Scripts\activate
+
+alembic revision --autogenerate -m "describe the migration"
+alembic upgrade head
+alembic current
+alembic history
+alembic downgrade -1
+
+# Run Celery worker
 python -m celery -A app.workers.celery_app:celery_app worker --loglevel=INFO -Q resume_priority,resume_bulk --pool=solo
 
-to run the bcakend and ai service
-uvicorn app.main:app --reload --port 8001
+# Run backend API
 python -m uvicorn app.main:app --reload --port 8000
+
+# AI service
+# Folder: D:\ATS\ats-backend\services\ai-service
+cd D:\ATS\ats-backend\services\ai-service
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+
+# Run AI API
+python -m uvicorn app.main:app --reload --port 8001
