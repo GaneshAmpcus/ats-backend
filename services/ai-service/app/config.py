@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr | None = None
     groq_model: str = "llama-3.3-70b-versatile"
     groq_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
-    groq_max_tokens: int = Field(default=2048, ge=1)
+    groq_max_tokens: int = Field(default=8192, ge=1)
     groq_timeout_seconds: float = Field(default=60.0, gt=0)
 
     @field_validator("ai_database_schema")

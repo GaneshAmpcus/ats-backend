@@ -19,14 +19,31 @@ def parse_resume_text(text: str, *, llm: BaseChatModel) -> ResumeParseResult:
     """Run the structured LLM extraction, validate it and apply deterministic fixes."""
     today = datetime.now(timezone.utc).date()
     try:
-        result = llm.with_structured_output(ResumeParseResult).invoke(
+        # Request JSON directly: tool calling can fail when the model does not
+        # emit the required tool call, even for otherwise valid resume text.
+        response = llm.with_structured_output(
+            ResumeParseResult, method="json_schema", include_raw=True
+        ).invoke(
             RESUME_PARSE_PROMPT.format_messages(
                 resume_text=text, current_date=today.isoformat()
             )
         )
+        if response["raw"].response_metadata.get("finish_reason") == "length":
+            raise ValueError("Resume output exceeded the model token budget")
+        if response["parsing_error"] is not None:
+            raise response["parsing_error"]
+        result = response["parsed"]
+        if result is None:
+            raise ValueError("Model returned no structured resume")
         if not isinstance(result, ResumeParseResult):
             result = ResumeParseResult.model_validate(result)
     except Exception as exc:
+        # Provider exception text can contain resume data; log metadata only.
+        logger.warning(
+            "Resume extraction failed (error_type=%s, status_code=%s)",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+        )
         raise ResumeParsingError("The resume could not be parsed by the AI service.") from exc
 
     try:

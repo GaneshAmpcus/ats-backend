@@ -40,7 +40,22 @@ Field rules:
   given it is end_year and start_year is null. A not-yet-completed degree uses its
   expected year as end_year.
 
-Examples (shortened). Today's date in these examples is 2026-11-13.
+- projects: one entry per named project. Copy its name and retain all factual
+  description bullets, including metrics. technologies contains only technologies
+  explicitly associated with that project. Copy a URL only when linked to that
+  project. Dates use YYYY-MM or YYYY when provided; otherwise null.
+- certifications: one entry per listed certification or completed course. Copy its
+  name. Extract issuer, issue_date, expiry_date, credential_id and credential_url
+  only when explicitly stated. Do not infer an issuer from a product in the title
+  (e.g. Azure does not establish Microsoft as issuer). Unknown values are null.
+  Separate an explicit provider suffix from the course name: "Business Analytics
+  & Data Science - V Analytics, Nashik" has name "Business Analytics & Data
+  Science" and issuer "V Analytics, Nashik".
+- Always include projects and certifications, using empty arrays if absent.
+- education includes school qualifications as well as university degrees.
+
+Examples (shortened; omitted projects and certifications mean empty arrays).
+Today's date in these examples is 2026-11-13.
 
 Example 1
 Resume:

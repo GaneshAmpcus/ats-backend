@@ -50,3 +50,14 @@ are defined in `app/parsing/schemas.py`, and orchestration lives in
 `app/parsing/service.py`. Endpoint tests replace the model factory with a fake, so
 they can verify the request and response contract without a Groq API key or live
 network call.
+
+Resume responses include `projects` (name, description, technologies, URL and
+dates) and `certifications` (name, issuer, dates and credential details). Missing
+sections return empty arrays; unknown scalar fields return null. Core API stores
+these in `parsed_data` without a database migration. Previously parsed jobs must
+be resubmitted to populate the new fields.
+
+Parsing uses JSON-schema output. `GROQ_MAX_TOKENS` defaults to 8192 to leave room
+for reasoning and the extracted fields. Responses marked as truncated are
+rejected instead of accepted as incomplete results. Restart the service after
+changing `.env` settings.

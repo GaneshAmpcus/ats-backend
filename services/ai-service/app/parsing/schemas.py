@@ -33,6 +33,28 @@ class EducationItem(BaseModel):
     end_year: int | None = None
 
 
+class ProjectItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+    technologies: list[str] = Field(default_factory=list)
+    url: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+class CertificationItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    issuer: str | None = None
+    issue_date: str | None = None
+    expiry_date: str | None = None
+    credential_id: str | None = None
+    credential_url: str | None = None
+
+
 class ResumeParseResult(BaseModel):
     """Fields persisted by Core API and exposed as the resume parse result."""
 
@@ -44,3 +66,5 @@ class ResumeParseResult(BaseModel):
     total_experience_years: float | None = None
     experience: list[ExperienceItem] = Field(default_factory=list)
     education: list[EducationItem] = Field(default_factory=list)
+    projects: list[ProjectItem] = Field(default_factory=list)
+    certifications: list[CertificationItem] = Field(default_factory=list)

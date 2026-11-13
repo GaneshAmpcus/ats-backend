@@ -40,13 +40,15 @@ def _make_job(db_session, storage, content: bytes = b"Jane Doe\nPython developer
 
 def test_successful_job_stores_text_and_parsed_data(db_session, memory_storage) -> None:
     job = _make_job(db_session, memory_storage)
-    ai = FakeAI()
+    payload = {"skills": ["Python"], "projects": [{"name": "Search app"}],
+               "certifications": [{"name": "Cloud course"}]}
+    ai = FakeAI(result=payload)
 
     process_job(db_session, job.id, storage=memory_storage, ai_client=ai, max_attempts=4)
 
     db_session.refresh(job)
     assert job.status == ResumeJobStatus.COMPLETED
-    assert job.parsed_data == {"skills": ["Python"]}
+    assert job.parsed_data == payload
     assert job.extracted_text == "Jane Doe\nPython developer"
     assert job.attempts == 1
     assert job.completed_at is not None

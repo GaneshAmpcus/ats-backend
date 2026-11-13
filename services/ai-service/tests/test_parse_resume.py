@@ -1,8 +1,10 @@
 import pytest
+from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
+from app.parsing.schemas import ProjectItem, CertificationItem
 
 
 @pytest.fixture
@@ -30,16 +32,20 @@ def test_parse_resume_returns_structured_model_result(
         "total_experience_years": 6.0,
         "experience": [],
         "education": [],
+        "projects": [ProjectItem(name="Search app", technologies=["Python"]).model_dump()],
+        "certifications": [CertificationItem(name="Cloud course", issuer="Example Academy").model_dump()],
     }
 
     class StructuredModel:
         def invoke(self, messages):
             captured["messages"] = messages
-            return parsed
+            return {"parsed": parsed, "parsing_error": None,
+                    "raw": SimpleNamespace(response_metadata={"finish_reason": "stop"})}
 
     class FakeLLM:
-        def with_structured_output(self, schema):
+        def with_structured_output(self, schema, *, method, include_raw):
             captured["schema"] = schema
+            captured["method"] = method
             return StructuredModel()
 
     monkeypatch.setattr("app.api.v1.parse_resume.get_llm", lambda: FakeLLM())
@@ -52,6 +58,7 @@ def test_parse_resume_returns_structured_model_result(
     assert response.status_code == 200
     assert response.json() == parsed
     assert captured["schema"].__name__ == "ResumeParseResult"
+    assert captured["method"] == "json_schema"
     assert captured["messages"][-1].content.endswith("Some resume text\n</resume>")
 
 
@@ -59,7 +66,7 @@ def test_parse_resume_maps_model_failure_to_retryable_error(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class BrokenLLM:
-        def with_structured_output(self, schema):
+        def with_structured_output(self, schema, *, method, include_raw):
             raise RuntimeError("provider detail")
 
     monkeypatch.setattr("app.api.v1.parse_resume.get_llm", lambda: BrokenLLM())
@@ -79,6 +86,26 @@ def test_parse_resume_requires_api_key(client: TestClient) -> None:
     response = client.post("/api/v1/parse-resume", json={"text": "Some resume text"})
 
     assert response.status_code == 401
+
+
+def test_parse_resume_rejects_truncated_output(client: TestClient, monkeypatch) -> None:
+    class TruncatedLLM:
+        def with_structured_output(self, schema, **kwargs):
+            return self
+
+        def invoke(self, messages):
+            return {
+                "raw": SimpleNamespace(response_metadata={"finish_reason": "length"}),
+                "parsed": {"personal_info": {"full_name": "Partial result"}},
+                "parsing_error": None,
+            }
+
+    monkeypatch.setattr("app.api.v1.parse_resume.get_llm", lambda: TruncatedLLM())
+    response = client.post(
+        "/api/v1/parse-resume", json={"text": "Resume text"},
+        headers={"X-API-Key": "test-key"},
+    )
+    assert response.status_code == 502
 
 
 def test_parse_resume_rejects_blank_text(client: TestClient) -> None:
