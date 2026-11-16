@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings
 from app.integrations.storage import FileStorage, StorageError, get_resume_storage
 from app.modules.resumes import repository
-from app.modules.resumes.models import ResumeBatch, ResumeParseJob
+from app.modules.resumes.models import ResumeBatch, ResumeParseJob, ResumeRecord
 from app.modules.resumes.schemas import RejectedFile
 
 logger = logging.getLogger(__name__)
@@ -124,9 +124,10 @@ def _enqueue(db: Session, jobs: list[ResumeParseJob], *, high_priority: bool) ->
     return failed
 
 
-def submit_single(db: Session, upload: ValidatedUpload) -> ResumeParseJob:
+def submit_single(db: Session, upload: ValidatedUpload, *, candidate_id: str | None = None) -> ResumeParseJob:
     storage = get_resume_storage()
     job = _new_job(upload, storage)
+    job.record = ResumeRecord(resume_id=job.id, candidate_id=candidate_id, vector_chunks=[])
     try:
         repository.add_job(db, job)
         db.commit()

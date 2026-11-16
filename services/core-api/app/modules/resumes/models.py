@@ -84,3 +84,30 @@ class ResumeParseJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     batch: Mapped[ResumeBatch | None] = relationship(back_populates="jobs")
+
+    record: Mapped["ResumeRecord | None"] = relationship(back_populates="job", uselist=False)
+
+    @property
+    def candidate_id(self) -> str | None:
+        return self.record.candidate_id if self.record else None
+
+    @property
+    def vector_chunks(self) -> list[dict]:
+        return self.record.vector_chunks if self.record else []
+
+
+class ResumeRecord(Base):
+    """Permanent source JSON and embedding-ready text, separate from job status."""
+
+    __tablename__ = "resume_records"
+
+    resume_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("resume_parse_jobs.id", ondelete="RESTRICT"), primary_key=True
+    )
+    candidate_id: Mapped[str | None] = mapped_column(String(255), index=True)
+    parsed_data: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
+    vector_chunks: Mapped[list[dict]] = mapped_column(JSONType, default=list, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    job: Mapped[ResumeParseJob] = relationship(back_populates="record")

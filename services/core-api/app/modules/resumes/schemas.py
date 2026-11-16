@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.resumes.models import ResumeBatch, ResumeJobStatus
 
@@ -17,6 +17,8 @@ class ResumeJobResponse(BaseModel):
     file_size: int
     attempts: int
     parsed_data: dict[str, Any] | None
+    candidate_id: str | None = None
+    vector_chunks: list[dict[str, Any]] = Field(default_factory=list)
     error_message: str | None
     created_at: datetime
     started_at: datetime | None

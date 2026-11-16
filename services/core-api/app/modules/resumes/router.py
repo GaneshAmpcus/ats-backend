@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
@@ -39,13 +39,14 @@ def _validate(file: UploadFile, settings: Settings) -> service.ValidatedUpload:
 @router.post("/parse", response_model=ResumeJobResponse, status_code=202)
 def parse_resume(
     file: UploadFile = File(...),
+    candidate_id: str | None = Form(default=None, min_length=1, max_length=255),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> ResumeJobResponse:
     """Upload one resume. Returns a job; poll GET /resumes/jobs/{id} for the result."""
     try:
         upload = _validate(file, settings)
-        job = service.submit_single(db, upload)
+        job = service.submit_single(db, upload, candidate_id=candidate_id)
     except ResumeServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return ResumeJobResponse.model_validate(job)

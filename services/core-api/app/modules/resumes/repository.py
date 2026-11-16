@@ -4,7 +4,9 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
-from app.modules.resumes.models import ResumeBatch, ResumeJobStatus, ResumeParseJob
+from app.modules.resumes.models import ResumeBatch, ResumeJobStatus, ResumeParseJob, ResumeRecord
+from app.modules.resumes.chunking import build_resume_chunks
+from copy import deepcopy
 
 
 def _now() -> datetime:
@@ -58,6 +60,13 @@ def claim_job(db: Session, job_id: UUID) -> bool:
 
 
 def mark_completed(db: Session, job: ResumeParseJob, parsed_data: dict) -> None:
+    if job.record is None:
+        job.record = ResumeRecord(resume_id=job.id, vector_chunks=[])
+    job.record.parsed_data = deepcopy(parsed_data)
+    job.record.vector_chunks = build_resume_chunks(
+        parsed_data, resume_id=job.id, candidate_id=job.record.candidate_id,
+        filename=job.original_filename,
+    )
     job.status = ResumeJobStatus.COMPLETED
     job.parsed_data = parsed_data
     job.error_message = None

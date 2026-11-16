@@ -41,11 +41,13 @@ def _txt(name: str = "cv.txt", content: bytes = b"Jane Doe\nPython developer"):
 
 
 def test_single_upload_runs_pipeline_and_job_can_be_fetched(client, memory_storage) -> None:
-    response = client.post("/api/v1/resumes/parse", files=[_txt()])
+    response = client.post("/api/v1/resumes/parse", files=[_txt()], data={"candidate_id": "candidate-123"})
 
     assert response.status_code == 202
     body = response.json()
     assert body["status"] == "completed"
+    assert body["candidate_id"] == "candidate-123"
+    assert body["vector_chunks"] == []
     assert body["original_filename"] == "cv.txt"
     assert body["parsed_data"]["meta"] == {"received_characters": 25, "filename": "cv.txt"}
     assert len(memory_storage.files) == 1

@@ -49,6 +49,10 @@ def test_successful_job_stores_text_and_parsed_data(db_session, memory_storage) 
     db_session.refresh(job)
     assert job.status == ResumeJobStatus.COMPLETED
     assert job.parsed_data == payload
+    assert job.record.parsed_data == payload
+    assert len(job.vector_chunks) == 3
+    assert all(chunk["resume_id"] == str(job.id) for chunk in job.vector_chunks)
+    assert all(chunk["candidate_id"] is None for chunk in job.vector_chunks)
     assert job.extracted_text == "Jane Doe\nPython developer"
     assert job.attempts == 1
     assert job.completed_at is not None

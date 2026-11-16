@@ -40,7 +40,11 @@ def session_factory() -> Iterator[sessionmaker[Session]]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
+    # These fixtures exercise resume storage, not unrelated PostgreSQL-only modules.
+    Base.metadata.create_all(engine, tables=[
+        models.ResumeBatch.__table__, models.ResumeParseJob.__table__,
+        models.ResumeRecord.__table__,
+    ])
     yield sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     engine.dispose()
 
