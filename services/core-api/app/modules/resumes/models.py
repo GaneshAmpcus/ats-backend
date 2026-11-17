@@ -3,9 +3,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from app.db.base import Base
 
@@ -70,6 +71,11 @@ class ResumeParseJob(Base):
     parsed_data: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
     error_message: Mapped[str | None] = mapped_column(Text)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    embedding_status: Mapped[str | None] = mapped_column(String(20))
+    embedding_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    embedding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    embedding_error: Mapped[str | None] = mapped_column(Text)
+    embedding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -111,3 +117,22 @@ class ResumeRecord(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     job: Mapped[ResumeParseJob] = relationship(back_populates="record")
+
+
+class ResumeChunkEmbedding(Base):
+    __tablename__ = "resume_chunk_embeddings"
+    __table_args__ = (
+        Index("resume_chunk_embeddings_cosine_idx", "embedding", postgresql_using="hnsw",
+              postgresql_ops={"embedding": "vector_cosine_ops"}).ddl_if(dialect="postgresql"),
+    )
+
+    chunk_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    resume_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("resume_records.resume_id", ondelete="RESTRICT"), index=True)
+    candidate_id: Mapped[str | None] = mapped_column(String(255))
+    section_type: Mapped[str] = mapped_column(Text)
+    chunk_text: Mapped[str] = mapped_column(Text)
+    chunk_metadata: Mapped[dict] = mapped_column("metadata", JSONType)
+    embedding_model: Mapped[str] = mapped_column(Text)
+    # SQLite JSON is for isolated unit tests; PostgreSQL stores a real pgvector.
+    embedding: Mapped[list[float]] = mapped_column(JSON().with_variant(Vector(384), "postgresql"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -26,7 +26,7 @@ alembic history
 alembic downgrade -1
 
 # Run Celery worker
-python -m celery -A app.workers.celery_app:celery_app worker --loglevel=INFO -Q resume_priority,resume_bulk --pool=solo
+python -m celery -A app.workers.celery_app:celery_app worker --loglevel=INFO -Q resume_priority,resume_bulk,resume_embeddings --pool=solo
 
 # Run backend API
 python -m uvicorn app.main:app --reload --port 8000

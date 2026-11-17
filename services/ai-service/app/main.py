@@ -6,6 +6,7 @@ from fastapi.security import APIKeyHeader
 
 from app.api.v1.health import router as health_router
 from app.api.v1.parse_resume import router as parse_resume_router
+from app.api.v1.embed import router as embed_router
 from app.config import get_settings
 
 settings = get_settings()
@@ -17,6 +18,7 @@ app = FastAPI(
 )
 app.include_router(health_router, prefix=settings.api_v1_prefix)
 app.include_router(parse_resume_router, prefix=settings.api_v1_prefix)
+app.include_router(embed_router, prefix=settings.api_v1_prefix)
 
 
 @app.middleware("http")

@@ -16,6 +16,11 @@ class ResumeJobResponse(BaseModel):
     original_filename: str
     file_size: int
     attempts: int
+    embedding_status: str | None = None
+    embedding_attempts: int = 0
+    embedding_count: int = 0
+    embedding_error: str | None = None
+    embedding_completed_at: datetime | None = None
     parsed_data: dict[str, Any] | None
     candidate_id: str | None = None
     vector_chunks: list[dict[str, Any]] = Field(default_factory=list)

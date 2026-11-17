@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     resume_max_pdf_pages: int = Field(default=50, ge=1)
     resume_max_text_chars: int = Field(default=100_000, ge=1000)
     resume_parse_max_retries: int = Field(default=3, ge=0)
+    resume_embedding_max_retries: int = Field(default=3, ge=0)
+    resume_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     @property
     def task_broker_url(self) -> str:
@@ -71,5 +73,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-
-print(settings.database_url)

@@ -76,3 +76,13 @@ def test_missing_api_key_is_not_retryable() -> None:
 def test_non_object_json_is_rejected() -> None:
     with pytest.raises(AIServiceError):
         _client(lambda request: httpx.Response(200, json=["not", "an", "object"])).parse_resume("t")
+
+
+def test_embedding_endpoint_uses_shared_auth_and_transport():
+    import json
+    def handler(request):
+        assert request.url.path == "/api/v1/embeddings"
+        assert request.headers["x-api-key"] == "secret"
+        assert json.loads(request.content) == {"texts": ["Python"]}
+        return httpx.Response(200, json={"model": "test", "dimensions": 1, "embeddings": [[1.0]]})
+    assert _client(handler).embed_texts(["Python"])["embeddings"] == [[1.0]]

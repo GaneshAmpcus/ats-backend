@@ -44,6 +44,7 @@ def session_factory() -> Iterator[sessionmaker[Session]]:
     Base.metadata.create_all(engine, tables=[
         models.ResumeBatch.__table__, models.ResumeParseJob.__table__,
         models.ResumeRecord.__table__,
+        models.ResumeChunkEmbedding.__table__,
     ])
     yield sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     engine.dispose()

@@ -68,6 +68,7 @@ def mark_completed(db: Session, job: ResumeParseJob, parsed_data: dict) -> None:
         filename=job.original_filename,
     )
     job.status = ResumeJobStatus.COMPLETED
+    job.embedding_status = "pending"
     job.parsed_data = parsed_data
     job.error_message = None
     job.completed_at = _now()

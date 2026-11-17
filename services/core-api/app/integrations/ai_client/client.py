@@ -29,12 +29,17 @@ class AIServiceClient:
         self._transport = transport
 
     def parse_resume(self, text: str, *, filename: str | None = None) -> dict[str, Any]:
-        if not self._api_key:
-            raise AIServiceError("AI service API key is not configured.", retryable=False)
-
         payload: dict[str, Any] = {"text": text}
         if filename:
             payload["filename"] = filename
+        return self._post(PARSE_RESUME_PATH, payload)
+
+    def embed_texts(self, texts: list[str]) -> dict[str, Any]:
+        return self._post("/api/v1/embeddings", {"texts": texts})
+
+    def _post(self, path: str, payload: dict) -> dict[str, Any]:
+        if not self._api_key:
+            raise AIServiceError("AI service API key is not configured.", retryable=False)
 
         try:
             with httpx.Client(
@@ -43,7 +48,7 @@ class AIServiceClient:
                 transport=self._transport,
             ) as client:
                 response = client.post(
-                    PARSE_RESUME_PATH,
+                    path,
                     json=payload,
                     headers={"X-API-Key": self._api_key},
                 )

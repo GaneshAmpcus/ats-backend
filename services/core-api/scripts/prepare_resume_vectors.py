@@ -16,8 +16,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dimensions", type=int, required=True)
     args = parser.parse_args()
-    if not 1 <= args.dimensions <= 2000:
-        parser.error("dimensions must be between 1 and 2000 for the HNSW vector index")
+    if args.dimensions != 384:
+        parser.error("The resume embedding pipeline uses vector(384); other models require an explicit schema migration")
     if engine.dialect.name != "postgresql":
         parser.error("pgvector storage requires PostgreSQL")
     create_tables()
