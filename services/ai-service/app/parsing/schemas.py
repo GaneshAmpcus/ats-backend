@@ -54,6 +54,12 @@ class CertificationItem(BaseModel):
     credential_id: str | None = None
     credential_url: str | None = None
 
+class SkillItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skill: str | None = None
+    yoe: float | None = None
+
 
 class ResumeParseResult(BaseModel):
     """Fields persisted by Core API and exposed as the resume parse result."""
@@ -62,7 +68,7 @@ class ResumeParseResult(BaseModel):
 
     personal_info: PersonalInfo = Field(default_factory=PersonalInfo)
     summary: str | None = None
-    skills: list[str] = Field(default_factory=list)
+    skills: list[SkillItem] = Field(default_factory=list)
     total_experience_years: float | None = None
     experience: list[ExperienceItem] = Field(default_factory=list)
     education: list[EducationItem] = Field(default_factory=list)

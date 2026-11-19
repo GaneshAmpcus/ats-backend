@@ -79,24 +79,61 @@ def compute_total_experience_years(
     days = sum((end - start).days for start, end in merged)
     return round(days / 365.25, 1)
 
+import math
+from app.parsing.schemas import SkillItem, ResumeParseResult
 
 def normalize_result(result: ResumeParseResult, today: date) -> ResumeParseResult:
     """Clean up the model output in place and return it."""
-    seen: set[str] = set()
-    skills: list[str] = []
-    for skill in result.skills:
-        skill = " ".join(skill.split())
-        key = skill.casefold()
-        if skill and key not in seen:
-            seen.add(key)
-            skills.append(skill)
+
+    # Normalize skill names and remove duplicates.
+    # If duplicates have different YOE values, retain the highest
+    # non-null value rather than counting the same skill twice.
+    seen: dict[str, int] = {}
+    skills: list[SkillItem] = []
+
+    for item in result.skills:
+        skill_name = " ".join((item.skill or "").split())
+
+        if not skill_name:
+            continue
+
+        yoe = item.yoe
+
+        # Sanitize YOE.
+        if yoe is not None:
+            if not math.isfinite(yoe) or yoe < 0:
+                yoe = None
+            else:
+                yoe = round(yoe, 1)
+
+        key = skill_name.casefold()
+
+        if key in seen:
+            existing = skills[seen[key]]
+
+            if yoe is not None:
+                if existing.yoe is None or yoe > existing.yoe:
+                    existing.yoe = yoe
+
+            continue
+
+        seen[key] = len(skills)
+        skills.append(
+            SkillItem(
+                skill=skill_name,
+                yoe=yoe,
+            )
+        )
+
     result.skills = skills
 
+    # Preserve existing current-employment normalization.
     for item in result.experience:
         if _is_present(item.end_date):
             item.end_date = None
             item.is_current = True
 
+    # Preserve existing total experience calculation.
     computed = compute_total_experience_years(result.experience, today)
     if computed is not None:
         result.total_experience_years = computed

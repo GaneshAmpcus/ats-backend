@@ -16,12 +16,39 @@ Field rules:
   "Links:" list at the end may hold URLs behind link labels). Otherwise null.
 - summary: the candidate's own summary/objective/profile text. Null if there is none;
   never write one yourself.
-- skills: a flat list of individual skills, tools and technologies. Take them from the
-  skills section AND from technologies explicitly named in experience, projects and
-  certifications. Split grouped items into separate entries, and keep the parent name
-  for sub-services (e.g. "AWS (S3, SageMaker)" -> "AWS S3", "AWS SageMaker"). Keep
-  the resume's own spelling. No duplicates. No soft skills unless listed as skills. Do
-  not put degrees, certifications or job titles in skills.
+- skills: a list of objects, each containing:
+  - skill: the individual skill, tool or technology name.
+  - yoe: estimated years of experience with that skill, as a number with one
+    decimal place, or null when the duration cannot be established.
+
+  Extract skills from the skills section AND from technologies explicitly named
+  in experience, projects and certifications. Split grouped items into separate
+  entries, and keep the parent name for sub-services (e.g. "AWS (S3, SageMaker)"
+  -> "AWS S3", "AWS SageMaker"). Keep the resume's own spelling. Do not include
+  duplicate skill names. No soft skills unless listed as skills. Do not put
+  degrees, certifications or job titles in skills.
+
+  Skill YOE rules:
+  - Use only information explicitly supported by the resume. Do not infer
+    experience from a candidate's claimed total experience or from assumptions.
+  - If a skill is explicitly mentioned in an employment record's title or
+    description, count the entire duration of that employment for that skill.
+    Do not estimate partial usage within the employment period.
+  - If the same skill appears in multiple employment records, combine their
+    durations. Merge overlapping employment periods for that skill so the
+    overlapping time is not counted twice.
+  - For ongoing employment, calculate the duration up to today's date.
+  - Use the employment dates as written. Apply the same date interpretation
+    used for total_experience_years.
+  - A skill mentioned only in the general skills section, projects or
+    certifications does not establish employment duration. Set yoe=null
+    unless a dated employment record also supports it.
+  - If employment dates are missing or insufficient to establish a duration,
+    set yoe=null rather than guessing.
+  - For this iteration, do not derive skill YOE from internships. If a skill
+    is supported only by an internship, set yoe=null. Internship/fresher
+    handling will be defined separately.
+  - Return yoe as a non-negative number rounded to one decimal place, or null.
 - experience: one entry per job/internship, in the order shown. Do not put projects,
   certifications or education here.
   - title and company only; no dates or locations inside them.
@@ -72,7 +99,14 @@ B.E. Computer Engineering, Pune University, 2016 - 2020
 Links:
 https://www.linkedin.com/in/ravikumar
 Output:
-{{"personal_info": {{"full_name": "Ravi Kumar", "email": "ravi@example.com", "phone": "+91 98765 43210", "location": "Pune, India", "linkedin_url": "https://www.linkedin.com/in/ravikumar"}}, "summary": null, "skills": ["Python", "SQL", "AWS S3", "AWS Lambda", "Docker"], "total_experience_years": 5.7, "experience": [{{"title": "Backend Developer", "company": "Acme Corp", "start_date": "2021-03", "end_date": null, "is_current": true, "description": "Built REST APIs serving 2M requests/day."}}, {{"title": "Backend Intern", "company": "Beta Labs", "start_date": "2020-06", "end_date": "2020-12", "is_current": false, "description": "Wrote unit tests."}}], "education": [{{"degree": "B.E. Computer Engineering", "institution": "Pune University", "start_year": 2016, "end_year": 2020}}]}}
+{{"personal_info": {{"full_name": "Ravi Kumar", "email": "ravi@example.com", "phone": "+91 98765 43210", "location": "Pune, India", "linkedin_url": "https://www.linkedin.com/in/ravikumar"}}, "summary": null, "skills": [
+  {{"skill": "Python", "yoe": null}},
+  {{"skill": "SQL", "yoe": null}},
+  {{"skill": "AWS S3", "yoe": null}},
+  {{"skill": "AWS Lambda", "yoe": null}},
+  {{"skill": "Docker", "yoe": null}},
+  {{"skill": "REST APIs", "yoe": 5.7}}
+], "total_experience_years": 5.7, "experience": [{{"title": "Backend Developer", "company": "Acme Corp", "start_date": "2021-03", "end_date": null, "is_current": true, "description": "Built REST APIs serving 2M requests/day."}}, {{"title": "Backend Intern", "company": "Beta Labs", "start_date": "2020-06", "end_date": "2020-12", "is_current": false, "description": "Wrote unit tests."}}], "education": [{{"degree": "B.E. Computer Engineering", "institution": "Pune University", "start_year": 2016, "end_year": 2020}}]}}
 
 Example 2 (year-only dates, no contact links)
 Resume:
@@ -86,7 +120,11 @@ Projects
 Sales Dashboard - built in Tableau
 MBA (Finance), Mumbai University, 2019
 Output:
-{{"personal_info": {{"full_name": "Meera Shah", "email": null, "phone": null, "location": null, "linkedin_url": null}}, "summary": "Data Analyst with 4 years of experience in reporting.", "skills": ["Excel", "Power BI", "Tableau"], "total_experience_years": 4.0, "experience": [{{"title": "Data Analyst", "company": "Gamma Pvt Ltd", "start_date": "2019", "end_date": "2023", "is_current": false, "description": "Automated weekly reports using Excel macros."}}], "education": [{{"degree": "MBA (Finance)", "institution": "Mumbai University", "start_year": null, "end_year": 2019}}]}}
+{{"personal_info": {{"full_name": "Meera Shah", "email": null, "phone": null, "location": null, "linkedin_url": null}}, "summary": "Data Analyst with 4 years of experience in reporting.", "skills": [
+  {{"skill": "Excel", "yoe": 4.0}},
+  {{"skill": "Power BI", "yoe": null}},
+  {{"skill": "Tableau", "yoe": null}}
+], "total_experience_years": 4.0, "experience": [{{"title": "Data Analyst", "company": "Gamma Pvt Ltd", "start_date": "2019", "end_date": "2023", "is_current": false, "description": "Automated weekly reports using Excel macros."}}], "education": [{{"degree": "MBA (Finance)", "institution": "Mumbai University", "start_year": null, "end_year": 2019}}]}}
 
 Example 3 (missing dates -> unknown experience)
 Resume:
@@ -95,7 +133,9 @@ sam@example.com
 Software Engineer at Delta Inc
 - Maintained internal tools in Java.
 Output:
-{{"personal_info": {{"full_name": "Sam Lee", "email": "sam@example.com", "phone": null, "location": null, "linkedin_url": null}}, "summary": null, "skills": ["Java"], "total_experience_years": null, "experience": [{{"title": "Software Engineer", "company": "Delta Inc", "start_date": null, "end_date": null, "is_current": null, "description": "Maintained internal tools in Java."}}], "education": []}}"""
+{{"personal_info": {{"full_name": "Sam Lee", "email": "sam@example.com", "phone": null, "location": null, "linkedin_url": null}}, "summary": null, "skills": [
+  {{"skill": "Java", "yoe": null}}
+], "total_experience_years": null, "experience": [{{"title": "Software Engineer", "company": "Delta Inc", "start_date": null, "end_date": null, "is_current": null, "description": "Maintained internal tools in Java."}}], "education": []}}"""
 
 RESUME_PARSE_PROMPT = ChatPromptTemplate.from_messages(
     [
