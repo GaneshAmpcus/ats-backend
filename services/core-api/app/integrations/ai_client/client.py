@@ -1,10 +1,14 @@
 from typing import Any
 
 import httpx
+import logging
 
 from app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
+
 PARSE_RESUME_PATH = "/api/v1/parse-resume"
+JD_PATH = "/api/v1/jd"
 
 
 class AIServiceError(Exception):
@@ -75,6 +79,34 @@ class AIServiceClient:
         if not isinstance(data, dict):
             raise AIServiceError("AI service returned an unexpected payload.", retryable=False)
         return data
+
+    def jd_request(self, operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Forward an authoring request to the authenticated AI service."""
+        if operation not in {"generate", "enhance", "regenerate-section", "skills/suggest", "boolean-string"}:
+            raise ValueError("Unsupported JD operation")
+        if not self._api_key:
+            raise AIServiceError("AI service API key is not configured.", retryable=False)
+        try:
+            with httpx.Client(base_url=self._base_url, timeout=self._timeout, transport=self._transport) as client:
+                response = client.post(f"{JD_PATH}/{operation}", json=payload, headers={"X-API-Key": self._api_key})
+        except httpx.TimeoutException as exc:
+            logger.error("JD AI-service request timed out (timeout_seconds=%s)", self._timeout)
+            raise AIServiceError("AI service request timed out.", retryable=True) from exc
+        except httpx.TransportError as exc:
+            logger.error("JD AI-service transport failed (error_type=%s)", type(exc).__name__)
+            raise AIServiceError("AI service is unreachable.", retryable=True) from exc
+        logger.info("JD AI-service response (status_code=%s)", response.status_code)
+        if response.status_code == 429 or response.status_code >= 500:
+            raise AIServiceError(f"AI service returned status {response.status_code}.", retryable=True)
+        if response.status_code >= 400:
+            raise AIServiceError(f"AI service rejected the request with status {response.status_code}.", retryable=False)
+        try:
+            result = response.json()
+        except ValueError as exc:
+            raise AIServiceError("AI service returned invalid JSON.", retryable=False) from exc
+        if not isinstance(result, dict):
+            raise AIServiceError("AI service returned an unexpected payload.", retryable=False)
+        return result
 
 
 def get_ai_client() -> AIServiceClient:

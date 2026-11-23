@@ -9,7 +9,13 @@ from app.config import get_settings
 
 @lru_cache(maxsize=1)
 def get_llm() -> ChatGroq:
-    """Return a reusable LangChain chat model configured for Groq."""
+    """Return a reusable LangChain chat model configured for Groq.
+
+    max_tokens is intentionally not capped here — the value comes from
+    settings (GROQ_MAX_TOKENS, default 8192) which is enough for a full
+    JDSections response.  Callers that need a different limit can override
+    via settings rather than constructing a second client.
+    """
     settings = get_settings()
     if settings.groq_api_key is None or not settings.groq_api_key.get_secret_value():
         raise RuntimeError("GROQ_API_KEY must be set before using the LLM")
