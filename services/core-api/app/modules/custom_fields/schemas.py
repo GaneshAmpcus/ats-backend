@@ -17,6 +17,7 @@ class CustomFieldDefinitionCreate(BaseModel):
     is_active: bool = True
     display_order: int = 0
     options: dict[str, Any] | None = None
+    business_unit_id: UUID | None = None
 
 
 class CustomFieldDefinitionUpdate(BaseModel):
@@ -39,13 +40,15 @@ class CustomFieldDefinitionRead(BaseModel):
     is_active: bool
     display_order: int
     options: dict[str, Any] | None
+    business_unit_id: UUID | None
     created_at: datetime
     updated_at: datetime
 
 
 class CustomFieldValueBase(BaseModel):
     definition_id: UUID
-    entity_id: UUID
+    entity_id: UUID | None = None
+    entity_id_bigint: int | None = None
     value_text: str | None = None
     value_number: Decimal | None = None
     value_date: date | None = None
@@ -54,6 +57,8 @@ class CustomFieldValueBase(BaseModel):
 
     @model_validator(mode="after")
     def _only_one_value(self) -> "CustomFieldValueBase":
+        if (self.entity_id is None) == (self.entity_id_bigint is None):
+            raise ValueError("Exactly one of entity_id and entity_id_bigint must be set.")
         values = (
             self.value_text,
             self.value_number,
